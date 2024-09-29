@@ -7,36 +7,39 @@ import model.Food;
 
 import javax.swing.*;
 import java.awt.*;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.PreparedStatement;
-import java.sql.SQLException;
+import java.util.Random;
 
 public class GamePanel extends JPanel implements GameObserver {
     private Game game;
     private Timer timer;
-    private String playerName;  // Ime igrača
+    private int appleX, appleY;
+    private int currentDelay = 100;
+    private Random random = new Random();
+    private final int UNIT_SIZE = 25;
+    private final int SCREEN_WIDTH = 800;
+    private final int SCREEN_HEIGHT = 480;
+    private final int initialPos = 50;
+    private boolean running = true;
 
-    // Ažurirani konstruktor koji prima ime igrača
-    public GamePanel(Game game, String playerName, JFrame gameFrame) {
+    public GamePanel(Game game) {
         this.game = game;
-        this.playerName = playerName;  // Postavi ime igrača
-        this.setPreferredSize(new Dimension(800, 480));
+        this.setPreferredSize(new Dimension(SCREEN_WIDTH, SCREEN_HEIGHT));
         this.setBackground(Color.BLACK);
 
         // Registriramo se kao promatrač igre
         game.addObserver(this);
 
         // Inicijaliziramo i pokrećemo timer
-        timer = new Timer(100, e -> {
+        timer = new Timer(currentDelay, e -> {
             if (game.isRunning()) {
                 game.update();  // Ažuriramo stanje igre (pomičemo zmiju, provjeravamo hranu, sudare)
                 repaint();  // Crtamo ažurirani prikaz igre
             } else {
-                gameOver(gameFrame);  // Ako igra završi, prikazujemo kraj
+                gameOver();
             }
         });
         timer.start();  // Pokrećemo tajmer za redovito ažuriranje igre
+        newApple();
     }
 
     @Override
@@ -51,12 +54,12 @@ public class GamePanel extends JPanel implements GameObserver {
 
         // Crtanje hrane
         g.setColor(Color.RED);
-        g.fillOval(food.getPosition().x * 25, food.getPosition().y * 25, 25, 25);
+        g.fillOval(appleX, appleY, UNIT_SIZE, UNIT_SIZE);
 
         // Crtanje zmije
         g.setColor(Color.GREEN);
         for (Point p : snake.getBody()) {
-            g.fillRect(p.x * 25, p.y * 25, 25, 25);
+            g.fillRect(p.x * UNIT_SIZE, p.y * UNIT_SIZE, UNIT_SIZE, UNIT_SIZE);
         }
 
         // Crtanje rezultata
@@ -64,42 +67,41 @@ public class GamePanel extends JPanel implements GameObserver {
         g.drawString("Score: " + game.getScore(), 10, 10);
     }
 
-    @Override
-    public void update() {
-        // Ažuriramo prikaz kada dođe do promjene stanja u igri
-        repaint();
-    }
+    private void newApple() {
+        boolean onSnake = true;
+        while (onSnake) {
+            appleX = random.nextInt((int) (SCREEN_WIDTH / UNIT_SIZE)) * UNIT_SIZE;
+            appleY = (random.nextInt((int) ((SCREEN_HEIGHT - initialPos - UNIT_SIZE) / UNIT_SIZE)) * UNIT_SIZE) + initialPos;
 
-    // Kraj igre
-    private void gameOver(JFrame gameFrame) {
-        timer.stop();  // Zaustavljamo timer
-        saveScoreToDatabase(game.getScore());  // Spremamo rezultat u bazu podataka
-
-        // Prikazujemo highscore prozor
-        Highscores highscoresWindow = new Highscores();
-        highscoresWindow.setVisible(true);  // Otvaramo novi prozor za Highscores
-
-        // Zatvaramo trenutni prozor igre
-        gameFrame.dispose();  // Zatvara prozor igre
-
-        // Prikazujemo poruku za kraj igre (možeš ovo ukloniti ili zadržati)
-        JOptionPane.showMessageDialog(null, "Game Over! Your score: " + game.getScore(), "Game Over", JOptionPane.INFORMATION_MESSAGE);
-    }
-
-
-    // Spremanje rezultata u bazu podataka
-    private void saveScoreToDatabase(int score) {
-        String query = "INSERT INTO highscores (player_name, score) VALUES (?, ?)";
-
-        try (Connection conn = DriverManager.getConnection("jdbc:mysql://localhost:3306/snake_game", "root", "shipwreck0");
-             PreparedStatement pstmt = conn.prepareStatement(query)) {
-
-            pstmt.setString(1, playerName);  // Postavi ime igrača
-            pstmt.setInt(2, score);  // Postavi rezultat igrača
-            pstmt.executeUpdate();
-
-        } catch (SQLException e) {
-            e.printStackTrace();
+            // Provjeri je li jabuka generirana na tijelu zmije
+            onSnake = false;
+            for (Point p : game.getSnake().getBody()) {
+                if (p.x * UNIT_SIZE == appleX && p.y * UNIT_SIZE == appleY) {
+                    onSnake = true;
+                    break;
+                }
+            }
         }
     }
+
+    private void gameOver() {
+        timer.stop();  // Zaustavljamo timer
+        JOptionPane.showMessageDialog(this, "Game Over!\nScore: " + game.getScore(), "Game Over", JOptionPane.INFORMATION_MESSAGE);
+        // Pozovi Highscore prozor
+        Highscores highscores = new Highscores();
+        highscores.setVisible(true);
+        SwingUtilities.getWindowAncestor(this).dispose(); // Zatvori trenutni prozor igre
+    }
+
+    @Override
+    public void update() {
+        // Provjera da li je zmija pojela jabuku
+        if (game.getSnake().getBody().get(0).x * UNIT_SIZE == appleX && game.getSnake().getBody().get(0).y * UNIT_SIZE == appleY) {
+            game.getSnake().grow();
+            game.increaseScore(5);
+            newApple();  // Generiraj novu jabuku
+        }
+        repaint();
+    }
 }
+

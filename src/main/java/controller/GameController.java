@@ -27,8 +27,4 @@ public class GameController extends KeyAdapter {
             game.getSnake().setDirection(Direction.RIGHT);
         }
     }
-
-    public void updateGame() {
-        game.update();
-    }
 }

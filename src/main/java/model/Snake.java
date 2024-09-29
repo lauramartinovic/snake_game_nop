@@ -47,7 +47,6 @@ public class Snake extends GameObject {
         body.remove(body.size() - 1);  // Ukloni zadnji segment (pomicanje)
     }
 
-
     public void grow() {
         body.add(new Point(body.get(body.size() - 1))); // dodaj segment na kraj tijela
     }
@@ -61,5 +60,4 @@ public class Snake extends GameObject {
         }
         return false;
     }
-
 }

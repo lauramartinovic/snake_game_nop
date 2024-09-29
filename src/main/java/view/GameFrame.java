@@ -18,7 +18,8 @@ public class GameFrame extends JFrame {
 
     public GameFrame(String playerName) {
         Game game = new Game();
-        GamePanel gamePanel = new GamePanel(game, playerName, this);
+        game.setPlayerName(playerName);  // Postavi ime igrača
+        GamePanel gamePanel = new GamePanel(game);
         GameController gameController = new GameController(game);
 
         this.add(gamePanel);
@@ -45,14 +46,12 @@ public class GameFrame extends JFrame {
         this.setJMenuBar(menuBar);
 
         // Akcija za prikaz highscores
-        // Akcija za prikaz highscores rezultata
         highscoresMenuItem.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
                 new Highscores();  // Otvori prozor za prikaz highscores rezultata
             }
         });
-
 
         // Akcija za izlazak iz igre
         exitMenuItem.addActionListener(new ActionListener() {
@@ -70,41 +69,4 @@ public class GameFrame extends JFrame {
         setResizable(false);
         setLocationRelativeTo(null);
     }
-
-    // Metoda za prikaz highscores rezultata
-    private void displayHighscores() {
-        List<String> topScores = getTopScores();  // Dohvaćamo top 10 rezultata iz baze
-
-        // Prikaz rezultata u dijalogu
-        StringBuilder highscoresText = new StringBuilder("Top 10 Highscores:\n");
-        for (String score : topScores) {
-            highscoresText.append(score).append("\n");
-        }
-
-        JOptionPane.showMessageDialog(this, highscoresText.toString(), "Highscores", JOptionPane.INFORMATION_MESSAGE);
-    }
-
-    // Metoda koja dohvaća top 10 rezultata iz baze podataka
-    private List<String> getTopScores() {
-        List<String> scores = new ArrayList<>();
-        String query = "SELECT player_name, score FROM highscores ORDER BY score DESC LIMIT 10";
-
-        try (Connection conn = DriverManager.getConnection("jdbc:mysql://localhost:3306/snake_game", "root", "shipwreck0");
-             Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery(query)) {
-
-            while (rs.next()) {
-                String playerName = rs.getString("player_name");
-                int score = rs.getInt("score");
-                scores.add(playerName + " - " + score);
-            }
-
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-
-        return scores;
-    }
-
-
 }
